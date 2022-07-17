@@ -1,5 +1,5 @@
 import os
-import sqlite3
+import db_connection as sql
 
 
 clearConsole = lambda: os.system('cls' if os.name in ('nt', 'dos') else 'clear')
@@ -17,13 +17,7 @@ def ids_contactos():
     '''    
 
     ids = set()
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute('SELECT id_contacto FROM datos_contactos;')
-    ids_contactos = cursor.fetchall()
-    connection.commit()
-    connection.close()
-
+    ids_contactos = sql.dql('contactos.db', 'SELECT id_contacto FROM datos_contactos;')
     for tupla in ids_contactos:
         for id in tupla:
             ids.add(str(id))
@@ -36,34 +30,22 @@ def mostrar_nombres():
     de la tabla "datos_contactos"
     de la base de datos "contactos.db".
     '''
-
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute('SELECT id_contacto, nombre FROM datos_contactos;')
-    contactos = cursor.fetchall()
-    connection.commit()
-    connection.close()
-
+    
+    contactos = sql.dql('contactos.db', 'SELECT id_contacto, nombre FROM datos_contactos;')
     for tupla in contactos:
         id, nombre = tupla
         print(f'[{id}] {nombre}')
 
 
 def ver():
-    '''Mustra todos los valores de las columnas: 
+    '''Muestra todos los valores de las columnas: 
     "nombre", "dirección", "teléfono" e "email" 
     de la tabla "datos_contactos"
     de la base de datos "contactos.db"
     ordenado alfabéticamente por "nombre".
     '''    
 
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute('SELECT nombre, dirección, teléfono, email FROM datos_contactos ORDER BY nombre;')
-    datos = cursor.fetchall()
-    connection.commit()
-    connection.close()
-
+    datos = sql.dql('contactos.db', 'SELECT nombre, dirección, teléfono, email FROM datos_contactos ORDER BY nombre;')
     for registro in datos:
         nombre, direccion, telefono, email = registro
         print(f'''
@@ -86,21 +68,16 @@ def agregar():
         email = input('EMAIL: ')
         clearConsole()
 
-        #Comprobando que los datos "nombre" y "teléfono" ingresados sean válidos.
-        if not nombre.isalpha():
-            print('ERROR: ingresa un NOMBRE válido.\n')
-        elif not telefono.isnumeric():
+        #Comprobando que el dato "telefono" ingresado sea válido.
+        if not telefono.isnumeric():
             print('ERROR: ingresa un TELÉFONO válido.\n')
         else:
             break
     
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute('''INSERT INTO datos_contactos (nombre, dirección, teléfono, email) 
-                        VALUES (?, ?, ?, ?);''', (nombre, direccion, telefono, email))
-    connection.commit()
-    connection.close()
-
+    sql.dml('contactos.db',
+    '''INSERT INTO datos_contactos (nombre, dirección, teléfono, email) 
+    VALUES (?, ?, ?, ?);''', (nombre, direccion, telefono, email))
+    
     print(f'El contacto {nombre} ha sido guardado.\n')
 
 
@@ -114,61 +91,62 @@ def editar():
     '''
 
     ids = ids_contactos()
+    if bool(ids) == False:
+        print('No hay contactos guardados en la base de datos. Comience a agregar sus contactos con la opción "Agregar" del inicio.\n')
+        return
+
     while True: 
+        print('Ingrese el contacto a editar:\n')
         mostrar_nombres()
-        id_editar = input('\nIngrese el contacto a editar: ')
+        print('\n[X] Cancelar\n')
+        id_editar = input()
         clearConsole()
         if id_editar in ids:
             break
+        elif id_editar.upper() == 'X':
+            return
         else:
-            print('ERROR: ingrese un contacto válido.\n')
+            print('ERROR: ingrese un contacto válido o ingrese [X] para cancelar la operación.\n')
 
     opciones = {'1': 'nombre',
                 '2': 'dirección',
                 '3': 'teléfono',
                 '4': 'email'}
     while True: 
-        print('''
-    Indique el campo a editar:
+        print('''Indique el campo a editar:
 
     [1] NOMBRE
     [2] DIRECCIÓN
     [3] TELÉFONO
     [4] EMAIL
+
+    [X] Cancelar
         ''')
         campo_editar = input()
         clearConsole()
         if campo_editar in opciones:
             break
+        elif campo_editar.upper() == 'X':
+            return
         else:
-            print('ERROR: has ingresado un carácter o número inválido. Por favor indique un campo del [1] al [4].')
+            print('ERROR: has ingresado un carácter o número inválido. Indique un campo del [1] al [4] o ingrese [X] para cancelar la operación.\n')
 
     while True:
         nuevo_valor = input('ingresa el nuevo dato: ')
         clearConsole()
-        #Comprobando si los datos a modificar son "nombre" o "teléfono", estos valores ingresados sean válidos.
-        if campo_editar == '1':
-            if not nuevo_valor.isalpha():
-                print('ERROR: ingresa un NOMBRE válido.\n')
-            else:
-                break
-        elif campo_editar == '3':
+        #Comprobando si el dato a modificar es "telefono", este valor ingresado sea válido.
+        if campo_editar == '3':
             if not nuevo_valor.isnumeric():
                 print('ERROR: ingresa un TELÉFONO válido.\n')
             else:
                 break
         else:
             break
+    
+    nombre_editado = sql.dql('contactos.db', f'SELECT nombre FROM datos_contactos WHERE id_contacto = {id_editar};')
+    sql.dml('contactos.db', f'UPDATE datos_contactos SET {opciones[campo_editar]} = "{nuevo_valor}" WHERE id_contacto = {id_editar};')
 
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute(f'SELECT nombre FROM datos_contactos WHERE id_contacto = {id_editar};')
-    nombre_editado = cursor.fetchone()
-    cursor.execute(f'UPDATE datos_contactos SET {opciones[campo_editar]} = "{nuevo_valor}" WHERE id_contacto = {id_editar};')
-    connection.commit()
-    connection.close()
-
-    print(f'El contacto {nombre_editado[0]} ha sido actualizado.\n')
+    print(f'El contacto {nombre_editado[0][0]} ha sido actualizado.\n')
 
 
 def eliminar():
@@ -176,21 +154,24 @@ def eliminar():
     de la base de datos "contactos.db".'''
     
     ids = ids_contactos()
+    if bool(ids) == False:
+        print('No hay contactos guardados en la base de datos. Comience a agregar sus contactos con la opción "Agregar" del inicio.\n')
+        return
+
     while True: 
+        print('Ingrese el contacto a eliminar:\n')
         mostrar_nombres()
-        id_eliminar = input('\nIngrese el contacto a eliminar: ')
+        print('\n[X] Cancelar\n')
+        id_eliminar = input()
         clearConsole()
         if id_eliminar in ids:
             break
+        elif id_eliminar.upper() == 'X':
+            return
         else:
-            print('ERROR: ingrese un contacto válido.\n')
+            print('ERROR: ingrese un contacto válido o ingrese [X] para cancelar la operación.\n')
 
-    connection = sqlite3.connect('contactos.db')
-    cursor = connection.cursor()
-    cursor.execute(f'SELECT nombre FROM datos_contactos WHERE id_contacto = {id_eliminar};')
-    nombre_eliminado = cursor.fetchone()
-    cursor.execute(f'DELETE FROM datos_contactos WHERE id_contacto = {id_eliminar};')
-    connection.commit()
-    connection.close()
+    nombre_eliminado = sql.dql('contactos.db', f'SELECT nombre FROM datos_contactos WHERE id_contacto = {id_eliminar};')
+    sql.dml('contactos.db', f'DELETE FROM datos_contactos WHERE id_contacto = {id_eliminar};')
 
-    print(f'El contacto {nombre_eliminado[0]} ha sido eliminado.\n')
+    print(f'El contacto {nombre_eliminado[0][0]} ha sido eliminado.\n')

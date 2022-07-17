@@ -36,7 +36,7 @@ while True:
     elif operacion == '5':
         exit()
     else:
-        print('ERROR: has ingresado un carácter o número inválido. Por favor elige una operación del [1] al [4] o ingresa [5] para salir.')
+        print('ERROR: has ingresado un carácter o número inválido. Elige una operación del [1] al [4] o ingresa [5] para salir.')
         continue
 
     ENTER = input('[ENTER] Inicio')

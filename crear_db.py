@@ -1,9 +1,7 @@
-import sqlite3 
+import db_connection as sql
 
-connection = sqlite3.connect('contactos.db')
-cursor = connection.cursor()
-cursor.execute('''
-CREATE TABLE datos_contactos (
+sql.ddl('contactos.db',
+'''CREATE TABLE datos_contactos (
   id_contacto INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre TEXT,
   dirección TEXT,
@@ -11,5 +9,3 @@ CREATE TABLE datos_contactos (
   email TEXT
 );
 ''')
-connection.commit()
-connection.close()
